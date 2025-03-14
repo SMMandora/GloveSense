@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import serial
 import streamlit as st
-from PIL import Image
+from PIL import Image, ExifTags
 import os
 import csv
 import time  # For time.sleep()
@@ -175,6 +175,21 @@ def get_image(image_number, image_placeholder, letter_placeholder):
     try:
         img_path = f"../GloveSense/gestures/{image_number}.JPG"
         img = Image.open(img_path)
+        try:
+            # Get the image's EXIF data
+            exif = img._getexif()
+            if exif is not None:
+                for tag, value in exif.items():
+                    if ExifTags.TAGS.get(tag) == 'Orientation':
+                        if value == 3:
+                            img = img.rotate(180, expand=True)
+                        elif value == 6:
+                            img = img.rotate(270, expand=True)
+                        elif value == 8:
+                            img = img.rotate(90, expand=True)
+        except (AttributeError, KeyError, IndexError):
+            # In case no EXIF data is present or it's malformed, we ignore it
+            pass
         img = img.resize((300, 400))
         # Use the image placeholder to display the image in the same spot
         image_placeholder.image(img)
@@ -191,69 +206,6 @@ def CreatePathFolder(G, Test):
         st.write(f"Successfully created the directory {pathFolder}")
     except OSError:
         st.warning(f"The directory {pathFolder} already exists.")
-
-# def plot_energies(E1, E2, E3, E4, E5, gesture_number):
-#     fig, axs = plt.subplots(3, 2, figsize=(10, 8))
-#
-#     # Plot Energy E1
-#     axs[0, 0].plot(E1, marker='o')
-#     axs[0, 0].set_title('Thumb Finger Energy')
-#
-#     # Plot Energy E2
-#     axs[0, 1].plot(E2, marker='o')
-#     axs[0, 1].set_title('Index Finger Energy')
-#
-#     # Plot Energy E3
-#     axs[1, 0].plot(E3, marker='o')
-#     axs[1, 0].set_title('Middle Finger Energy')
-#
-#     # Plot Energy E4
-#     axs[1, 1].plot(E4, marker='o')
-#     axs[1, 1].set_title('Ring Finger Energy')
-#
-#     # Plot Energy E5
-#     axs[2, 0].plot(E5, marker='o')
-#     axs[2, 0].set_title('Pinky Finger Energy')
-#
-#     # Remove the unused subplot (3,2)
-#     fig.delaxes(axs[2, 1])
-#
-#     fig.suptitle(f'Gesture {gesture_number} Energy Readings', fontsize=16)
-#     fig.tight_layout()
-#     #sensor_plot_placeholder.pyplot(fig)
-#     plt.close(fig)
-
-
-# def plot_energies_after_data_collection(gesture_number, Test):
-#     # Initialize data lists
-#     A1_list = []
-#     A2_list = []
-#     A3_list = []
-#     A4_list = []
-#     A5_list = []
-#
-#     # Read the saved CSV files
-#     for x in range(1, 6):  # Assuming 5 CSV files per gesture
-#         file_path = f"../GloveSense/G_Alph_{st.session_state.T}/Gesture {gesture_number} {Test}/J{gesture_number}.{x}.csv"
-#         try:
-#             mat = pd.read_csv(file_path)
-#             # Append data from each column to the corresponding list
-#             A1_list.extend(mat['A1'].tolist())
-#             A2_list.extend(mat['A2'].tolist())
-#             A3_list.extend(mat['A3'].tolist())
-#             A4_list.extend(mat['A4'].tolist())
-#             A5_list.extend(mat['A5'].tolist())
-#         except FileNotFoundError:
-#             st.error(f"File not found: {file_path}")
-#             return  # Stop execution if file not found
-#         except Exception as e:
-#             st.error(f"An error occurred while reading {file_path}: {e}")
-#             return  # Stop execution if any other error occurs
-#
-#     # Plot the raw data
-#     plot_energies(A1_list, A2_list, A3_list, A4_list, A5_list, gesture_number)
-
-
 
 def process_signal(signal, VR, VM):
     signal = signal.copy()
@@ -457,11 +409,11 @@ def ReadAndSave_TrainData(image_number, Test):
                 len(st.session_state.a5) % 5 == 0 and len(st.session_state.a6) % 5 == 0 and len(st.session_state.a7) % 5 == 0 and len(st.session_state.a8) % 5 == 0):
 
             division = len(st.session_state.a1) / 5
-            if division in [1, 3, 5, 7, 9]:
+            if division in [1, 3, 5, 7, 9, 11, 13, 15, 17, 19]:
                 # st.write('REST', division)
                 get_image(0, image_placeholder, letter_placeholder)  # Display the rest image
                 time.sleep(2)
-            elif division in [2, 4, 6, 8, 10, 12]:
+            elif division in [2, 4, 6, 8, 10, 12, 14, 16, 18, 20]:
                 # st.write('BEEP', division)
                 get_image(int(image_number), image_placeholder, letter_placeholder)  # Display the gesture image
                 time.sleep(2)
@@ -469,7 +421,7 @@ def ReadAndSave_TrainData(image_number, Test):
             min_length = min(len(st.session_state.a1), len(st.session_state.a2),
                              len(st.session_state.a3), len(st.session_state.a4),
                              len(st.session_state.a5), len(st.session_state.a6), len(st.session_state.a7),len(st.session_state.a8))
-            if min_length == 55:
+            if (Test == "" and min_length == 105) or (Test == 'Test' and min_length == 15):
                 # Convert lists to numpy arrays and subtract mean of first 5 samples
                 print("A1, A2, A3, A4, A5, A6, A7, A8", st.session_state.a1[5:], st.session_state.a2[5:], st.session_state.a3[5:], st.session_state.a4[5:], st.session_state.a5[5:], st.session_state.a6[5:], st.session_state.a7[5:], st.session_state.a8[5:])
                 log_filename = f"../GloveSense/G_Alph_{st.session_state.T}/Gesture {image_number}{Test}/sensor_values.log"
@@ -515,7 +467,8 @@ def ReadAndSave_TrainData(image_number, Test):
                 # Define VR and VM ranges
                 VR = []
                 VM = []
-                for i in range(0, 50, 10):
+                data_stream = 100 if Test =="" else 10
+                for i in range(0, data_stream, 10):
                     VR.extend(range(i, i + 5))
                     VM.extend(range(i + 5, i + 10))
                 VR = np.array(VR)
@@ -583,15 +536,16 @@ def ReadAndSave_TrainData(image_number, Test):
                 plot_multiple_csv(file_paths, image_number, Test)
 
 
-                E1 = [0, 0, 0, 0, 0]
-                E2 = [0, 0, 0, 0, 0]
-                E3 = [0, 0, 0, 0, 0]
-                E4 = [0, 0, 0, 0, 0]
-                E5 = [0, 0, 0, 0, 0]
-                E6 = [0, 0, 0, 0, 0]
-                E7 = [0, 0, 0, 0, 0]
-                E8 = [0, 0, 0, 0, 0]
-                for sa in range(1, 6):
+                E1 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                E2 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                E3 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                E4 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                E5 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                E6 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                E7 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                E8 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+                j_files = 10 if Test == "" else 1
+                for sa in range(1, j_files + 1):
                     E1[sa - 1] = np.sum(A1[VM[(sa - 1) * 5: sa * 5]] ** 2)
                     E2[sa - 1] = np.sum(A2[VM[(sa - 1) * 5: sa * 5]] ** 2)
                     E3[sa - 1] = np.sum(A3[VM[(sa - 1) * 5: sa * 5]] ** 2)
@@ -607,10 +561,15 @@ def ReadAndSave_TrainData(image_number, Test):
                 J2 = Q[:, 2] / np.max(Q[:, 2])
                 J3 = Q[:, 3] / np.max(Q[:, 3])
                 J4 = Q[:, 4] / np.max(Q[:, 4])
-                print("Q,J0,J1,J2,J3,J4,J5,J6,J7,J8",Q,J0,J1,J2,J3,J4)
+                J5 = Q[:, 5] / np.max(Q[:, 5])
+                J6 = Q[:, 6] / np.max(Q[:, 6])
+                J7 = Q[:, 7] / np.max(Q[:, 7])
+                J8 = Q[:, 8] / np.max(Q[:, 8])
+                J9 = Q[:, 9] / np.max(Q[:, 9])
+                print("Q,J0,J1,J2,J3,J4,J5,J6,J7,J8,J9",Q,J0,J1,J2,J3,J4,J5,J6,J7,J8,J9)
 
                 # Save the processed energy features into CSV files
-                for k in range(5):
+                for k in range(j_files):
                     ii = str(image_number)
                     jj = str(k + 1)
                     Filename = f'J{ii}.{jj}.csv'
@@ -843,7 +802,7 @@ def GetTrainModel_FullTrained():
 
     # Fit the Random Forest model
     rf_model.fit(tFeature1, tTarget1)
-    rf_model_filename = "model_FullTrained_RandomForest.joblib"
+    rf_model_filename = f"../GloveSense/G_Alph_{st.session_state.T}/model_FullTrained_RandomForest.joblib"
     joblib.dump(rf_model, rf_model_filename)
 
     # xgb_model.fit(tFeature1, tTarget1)
@@ -870,7 +829,7 @@ def GetTrainModel_FullTrained():
     best_ada = grid_search.best_estimator_
 
     # Save the best AdaBoost model
-    ada_model_filename = "model_FullTrained_AdaBoost.joblib"
+    ada_model_filename = f"../GloveSense/G_Alph_{st.session_state.T}/model_FullTrained_AdaBoost.joblib"
     joblib.dump(best_ada, ada_model_filename)
 
 
@@ -880,9 +839,9 @@ def btn_Train_Model():
         GetTrainModel_FullTrained()
 
         # Load the saved Random Forest model
-        rf_model = joblib.load('model_FullTrained_RandomForest.joblib')
+        rf_model = joblib.load(f'../GloveSense/G_Alph_{st.session_state.T}/model_FullTrained_RandomForest.joblib')
         # Load the saved AdaBoost model
-        ada_model = joblib.load('model_FullTrained_AdaBoost.joblib')
+        ada_model = joblib.load(f'../GloveSense/G_Alph_{st.session_state.T}/model_FullTrained_AdaBoost.joblib')
         # xgb_model = joblib.load('model_FullTrained_XGB.joblib')
         # Retrieve the original (unnormalized) training features and targets
         tFeature1 = st.session_state.tFeature1  # Should be a DataFrame
@@ -929,8 +888,8 @@ def btn_Test_Model(SelectedOption):
         on_start_button_click()
 
         # Define paths to both models
-        rf_model_path = 'model_FullTrained_RandomForest.joblib'
-        ada_model_path = 'model_FullTrained_AdaBoost.joblib'
+        rf_model_path = f'../GloveSense/G_Alph_{st.session_state.T}/model_FullTrained_RandomForest.joblib'
+        ada_model_path = f'../GloveSense/G_Alph_{st.session_state.T}/model_FullTrained_AdaBoost.joblib'
 
         # Get test data
         E1_test, E2_test, E3_test, E4_test, E5_test, E6_test, E7_test, E8_test = GetDataGesture(SelectedOption, "Test")
