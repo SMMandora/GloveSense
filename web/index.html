@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Glove Sense — Sign Language Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/style.css" />
+  <script src="/vendor/chart.umd.min.js" defer></script>
+  <script src="/app.js" type="module" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">✋</span>
+      <div>
+        <h1>Glove Sense</h1>
+        <p>Sign-language gesture studio</p>
+      </div>
+    </div>
+    <div class="pills">
+      <span class="pill" id="userPill">No user</span>
+      <span class="pill ok" id="serverPill" title="FastAPI backend status">● Online</span>
+      <span class="pill glove-off" id="glovePill" title="Glove serial connection (COM3)">🧤 Checking…</span>
+      <span class="pill" id="modePill">Idle</span>
+    </div>
+  </header>
+
+  <main class="bento">
+
+    <section class="card user-card">
+      <header class="card-head">
+        <h2>User</h2>
+        <p>Pick a profile or start a new one</p>
+      </header>
+      <div class="field">
+        <label for="username">Profile name</label>
+        <input type="text" id="username" placeholder="e.g. anna" autocomplete="off" />
+      </div>
+      <div class="actions">
+        <button id="btnCreateFolder" class="primary">Create / select</button>
+        <button id="btnNewUser" class="ghost">Clear</button>
+      </div>
+      <div class="subhead">Existing profiles</div>
+      <ul id="userList" class="user-list"></ul>
+      <div id="setupStatus" class="status"></div>
+    </section>
+
+    <section class="card hero-card">
+      <div class="hero-image-wrap" id="heroImageWrap">
+        <img id="gestureImg" src="/gestures/0.jpg" alt="gesture reference" />
+        <div class="phase-ring" data-phase="idle"></div>
+      </div>
+      <div class="hero-meta">
+        <div class="letter-row">
+          <span class="letter-label">Letter</span>
+          <span class="letter" id="gestureLetter">RS</span>
+        </div>
+        <div class="phase" id="phaseChip" data-phase="idle">Idle</div>
+        <div class="progress-row">
+          <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+          <span class="progress-text" id="progressText">0 / 0 samples</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card controls-card">
+      <nav class="tabs" role="tablist">
+        <button class="tab active" data-tab="train" role="tab">Train</button>
+        <button class="tab" data-tab="test" role="tab">Test</button>
+        <button class="tab" data-tab="lab" role="tab">Model Lab</button>
+      </nav>
+
+      <div class="panel active" id="trainPanel">
+        <p class="muted">Step through each gesture, then train the model on your samples.</p>
+        <div class="variant-row">
+          <span class="variant-label">Sampling profile</span>
+          <div class="segmented" id="variantToggle" role="radiogroup" aria-label="Sampling profile">
+            <button data-variant="v10" class="active" role="radio" aria-checked="true">10 reps · 105 samples</button>
+            <button data-variant="v5" role="radio" aria-checked="false">5 reps · 55 samples</button>
+          </div>
+          <span class="variant-hint muted" id="variantHint">Switch only between gestures, not mid-recording.</span>
+        </div>
+        <div class="grid-actions">
+          <button id="btnNextGesture" class="primary">▶ Next gesture</button>
+          <div class="inline">
+            <label for="selRepeat">Repeat</label>
+            <select id="selRepeat"></select>
+            <button id="btnRepeatGesture" class="secondary">Repeat</button>
+          </div>
+          <button id="btnPause" class="ghost">⏸ Pause</button>
+          <button id="btnAbort" class="danger">⛔ Abort</button>
+        </div>
+        <hr class="rule" />
+        <div class="train-row">
+          <button id="btnTrainModels" class="accent">💪 Train Random Forest</button>
+          <span class="status" id="trainStatus"></span>
+        </div>
+        <div id="trainResults" class="results"></div>
+
+        <div class="subhead">
+          Gesture progress
+          <span class="legend muted" id="gestureLegend">— shows how many times each gesture was recorded</span>
+        </div>
+        <ul class="gesture-grid" id="gestureGrid"></ul>
+      </div>
+
+      <div class="panel" id="testPanel">
+        <p class="muted">Collect one fresh sample of a gesture, then ask the model to guess it.</p>
+        <div class="grid-actions">
+          <div class="inline">
+            <label for="selTest">Gesture</label>
+            <select id="selTest"></select>
+          </div>
+          <div class="inline">
+            <label for="selModel">Model</label>
+            <select id="selModel"></select>
+          </div>
+          <button id="btnGetTestData" class="primary">📡 Capture test sample</button>
+          <button id="btnAbortTest" class="danger">⛔ Abort</button>
+          <button id="btnTestAccuracy" class="accent">🧪 Run prediction</button>
+        </div>
+        <div id="testStatus" class="status"></div>
+        <div id="reaction" class="reaction" hidden></div>
+        <div id="testResults" class="results"></div>
+      </div>
+
+      <div class="panel" id="labPanel">
+        <p class="muted">Benchmark every model on the pooled reference dataset (8 users) and see how it generalizes to a new person.</p>
+
+        <div class="grid-actions">
+          <div class="inline">
+            <span class="variant-label">Feature set</span>
+            <div class="segmented" id="featureToggle" role="radiogroup" aria-label="Feature set">
+              <button data-feature="basic" class="active" role="radio" aria-checked="true">Energy · 8-D</button>
+              <button data-feature="engineered" role="radio" aria-checked="false">Engineered · 48-D</button>
+            </div>
+          </div>
+          <button id="btnLeaderboard" class="primary">📊 Run 5-fold leaderboard</button>
+          <button id="btnLoou" class="accent">🧑‍🤝‍🧑 Run leave-one-user-out</button>
+        </div>
+
+        <div id="labStatus" class="status muted"></div>
+
+        <div id="leaderboardResults" class="results"></div>
+        <div id="loouResults" class="results"></div>
+      </div>
+    </section>
+
+    <section class="card stream-card">
+      <header class="card-head">
+        <h2>Live sensor stream</h2>
+        <p id="collectStatus" class="status">Waiting for collection…</p>
+      </header>
+      <div class="chart-grid" id="chartGrid">
+        <div class="chart-cell"><canvas id="chart1"></canvas><span>1 · Thumb</span></div>
+        <div class="chart-cell"><canvas id="chart2"></canvas><span>2 · Index</span></div>
+        <div class="chart-cell"><canvas id="chart3"></canvas><span>3 · Middle</span></div>
+        <div class="chart-cell"><canvas id="chart4"></canvas><span>4 · Ring</span></div>
+        <div class="chart-cell"><canvas id="chart5"></canvas><span>5 · Pinky</span></div>
+        <div class="chart-cell"><canvas id="chart6"></canvas><span>6 · Palm</span></div>
+        <div class="chart-cell"><canvas id="chart7"></canvas><span>7 · Wrist</span></div>
+        <div class="chart-cell"><canvas id="chart8"></canvas><span>8 · Ulnar</span></div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast-container" id="toasts" aria-live="polite"></div>
+
+  <footer class="footer">
+    <span>Backend: FastAPI · ML: Random Forest · Hardware: ESP8266 + LDC1614</span>
+  </footer>
+</body>
+</html>

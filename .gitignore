@@ -1,6 +1,73 @@
-*.csv
-*.log
-*.png
-*.jpg
-*.joblib
+# ─── Python build & cache artifacts ───────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Type checkers / linters / test runners
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# ─── Editors / IDE ────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Claude Code workspace state (settings.local.json holds user-specific perms,
+# launch.json is regenerated on demand — keep both out of version control)
+.claude/
+
+# ─── OS metadata ──────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
 *.ini
+
+# ─── Project-generated artifacts ──────────────────────────────
+# Sensor data, processed signals, energy features
+*.csv
+# Sensor / processing logs
+*.log
+# Saved matplotlib plots
+*.png
+# Reference gesture images (user provides locally — see gestures/)
+*.jpg
+*.jpeg
+
+# Trained ML models
+*.joblib
+*.pkl
+
+# Local data tree this app writes into (lives one dir up by default, but if it
+# ever ends up inside the repo we don't want it tracked)
+GloveSenseDash/
+G_Alph_*/
+
+# ─── Big binaries we don't need in git ────────────────────────
+# PyInstaller bundles
+*.exe
+# Zipped trial backups under "Data and scripts/"
+*.zip
+*.tar
+*.tar.gz
+*.7z
+
+# Node (in case anyone adds a JS build step later)
+node_modules/
+package-lock.json
+yarn.lock
